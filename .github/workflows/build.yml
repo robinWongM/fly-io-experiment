@@ -15,7 +15,7 @@ jobs:
 
       - name: Fetch Chromium code
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git --branch=main --depth=1
           export PATH="$PATH:$PWD/depot_tools"
 
           mkdir chromium && cd chromium
