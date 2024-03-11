@@ -36,11 +36,14 @@ jobs:
           cd chromium/src
           ./build/install-build-deps.sh --no-prompt
           gclient runhooks
-          gn gen out/Default
-          ninja -C out/Default cronet
+          
+          ./components/cronet/tools/cr_cronet.py gn
+          autoninja -C out/Debug cronet_package
+          ./components/cronet/tools/cr_cronet.py gn --release
+          autoninja -C out/Release cronet_package
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: cronet
-          path: chromium/src/out/Default/cronet
+          path: chromium/src/out
