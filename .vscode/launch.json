@@ -1,0 +1,48 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'fly-io-experiment'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=fly-io-experiment",
+                    "--package=fly-io-experiment"
+                ],
+                "filter": {
+                    "name": "fly-io-experiment",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "LD_LIBRARY_PATH": "$LD_LIBRARY_PATH:/workspaces/fly-io-experiment/bin"
+            },
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'fly-io-experiment'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=fly-io-experiment",
+                    "--package=fly-io-experiment"
+                ],
+                "filter": {
+                    "name": "fly-io-experiment",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

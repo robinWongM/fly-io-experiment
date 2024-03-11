@@ -1,0 +1,34 @@
+name: Build Cronet
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Fetch Chromium code
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          export PATH="$PATH:$PWD/depot_tools"
+
+          mkdir chromium && cd chromium
+          fetch --nohooks --no-history chromium
+
+      - name: Build Cronet
+        run: |
+          cd chromium/src
+          gn gen out/Default
+          ninja -C out/Default cronet
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: cronet
+          path: chromium/src/out/Default/cronet

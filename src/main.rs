@@ -1,41 +1,55 @@
-use std::convert::Infallible;
-use std::net::SocketAddr;
+mod cronet;
 
-use http_body_util::Full;
-use hyper::body::Bytes;
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper::{Request, Response};
-use hyper_util::rt::TokioIo;
+use std::time::Duration;
+
+use axum::{routing::get, Router};
 use tokio::net::TcpListener;
-
-async fn hello(_: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
-    Ok(Response::new(Full::new(Bytes::from("Hello, World!"))))
-}
+use tokio::time::sleep;
+use tower_http::timeout::TimeoutLayer;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use std::thread;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    let listener = TcpListener::bind(addr).await?;
+async fn main() {
+    // Enable tracing.
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "example_graceful_shutdown=debug,tower_http=debug,axum=trace".into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer().without_time())
+        .init();
 
-    // We start a loop to continuously accept incoming connections
-    loop {
-        let (stream, _) = listener.accept().await?;
+    // Create a regular axum app.
+    let app = Router::new()
+        .route("/probe", get(|| async {
+            let handle = thread::spawn(|| {
+                cronet::send_request();
+            });
+            handle.join().unwrap();
+        }))
+        .route("/slow", get(|| sleep(Duration::from_secs(5))))
+        .route("/forever", get(std::future::pending::<()>))
+        .layer((
+            TraceLayer::new_for_http(),
+            // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
+            // requests don't hang forever.
+            TimeoutLayer::new(Duration::from_secs(10)),
+        ));
 
-        // Use an adapter to access something implementing `tokio::io` traits as if they implement
-        // `hyper::rt` IO traits.
-        let io = TokioIo::new(stream);
+    // Create a `TcpListener` using tokio.
+    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
-        // Spawn a tokio task to serve multiple connections concurrently
-        tokio::task::spawn(async move {
-            // Finally, we bind the incoming connection to our `hello` service
-            if let Err(err) = http1::Builder::new()
-                // `service_fn` converts our function in a `Service`
-                .serve_connection(io, service_fn(hello))
-                .await
-            {
-                println!("Error serving connection: {:?}", err);
-            }
-        });
-    }
+    // Run the server with graceful shutdown
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
+}
+
+async fn shutdown_signal() {
+    // return a signal that emits 2 seconds after the program starts.
+    tokio::time::sleep(std::time::Duration::from_secs(2000000000000000)).await
 }
