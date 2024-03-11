@@ -38,7 +38,7 @@ jobs:
           gclient runhooks
           
           gn gen out/Default
-          autoninja -C out/ cronet_package
+          autoninja -C out/Default cronet_package
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
